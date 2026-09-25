@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Live IoT Dashboard</title>
+    <!-- Chart.js CDN for modern graphs -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 5px; }
+        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; }
+        .chart-container { position: relative; width: 100%; height: 400px; }
+        .loading { text-align: center; font-style: italic; color: #95a5a6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Live Sensor Monitor</h1>
+    <p class="subtitle">Data automatically synced from ThingSpeak</p>
+    
+    <div id="loadingText" class="loading">Fetching latest data...</div>
+    <div class="chart-container">
+        <canvas id="iotChart"></canvas>
+    </div>
+</div>
+
+<script>
+    // --- CONFIGURATION ---
+    const CHANNEL_ID = 'YOUR_CHANNEL_ID'; // Replace with your ThingSpeak Channel ID
+    const READ_API_KEY = 'YOUR_READ_API_KEY'; // Replace with your Read API Key
+    const RESULTS_COUNT = 15; // Number of data points to display
+    // ---------------------
+
+    const url = `https://thingspeak.com{CHANNEL_ID}/feeds.json?api_key=${READ_API_KEY}&results=${RESULTS_COUNT}`;
+
+    async function fetchTrackerData() {
+        try {
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            document.getElementById('loadingText').style.display = 'none';
+            
+            // Extract timestamps and field values (assuming Field 1 is your primary data)
+            const labels = data.feeds.map(feed => {
+                const date = new Date(feed.created_at);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+            const fieldData = data.feeds.map(feed => parseFloat(feed.field1));
+            const fieldName = data.channel.field1 || 'Sensor Data';
+
+            // Render Chart
+            const ctx = document.getElementById('iotChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: fieldName,
+                        data: fieldData,
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: false }
+                    }
+                }
+            });
+        } catch (error) {
+            document.getElementById('loadingText').innerText = 'Error loading data. Check your Channel ID and API Key.';
+            console.error('Error fetching data:', error);
+        }
+    }
+
+    fetchTrackerData();
+</script>
+
+</body>
+</html>
